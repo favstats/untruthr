@@ -2,76 +2,256 @@
 ### https://raw.githubusercontent.com/stanfordio/truthbrush/main/truthbrush/api.py
 
 ## todo:
-## 1. pagination
-## 2. authentication
-## 3. document all api endpoints
+## 1. document all api endpoints
+## 2. more functionalities (e.g. get truths by date)
 
 
 
-
-library(httr)
-library(tidyverse)
 
 # https://truthsocial.com/api/v2/search?q=trump&resolve=true&limit=20&type=statuses
 
 
-parse_output <- function(x) {
-    x %>%
-        discard(is_empty) %>%
-        map_if(is.list, list) %>%
-        as_tibble()
+
+
+
+
+ratelimit_check <- function(req_res, base_url, heads_up, q = NULL, retry = T) {
+    header_dat <- ratelimit_check_int(req_res)
+
+    if(header_dat$ratelimit_info == "retry" & retry){
+
+        if(is.null(q)){
+
+            req_res = httr::GET(base_url, heads_up, encode = "json")
+        } else {
+
+            req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
+        }
+
+    }
+
+    return(header_dat)
 }
 
-untruth_search <- function(what_are_you_looking_for, search_type = "statuses") {
 
-    heads_up <- add_headers(`User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0",
-                            Authorization = glue::glue("Bearer {Sys.getenv('truth_social_token')}"),
-                            Accept = 'application/json',
-                            `Accept-Language` = 'en-US,en;q=0.5',
-                            `Accept-Encoding` = "gzip, deflate, br",
-                            `Content-Type` = "application/json",
-                            Connection = "keep-alive"
+
+#' @export
+untruth_trends <- function(type = "hashtags") {
+
+
+    heads_up <- untruth_headers()
+
+    type <- dplyr::case_when(
+        type == "hashtags" ~ "trends",
+        type == "truths" ~ "truth/trending/truths",
     )
 
-    getted = GET("https://truthsocial.com/api/v2/search", heads_up, query = list(resolve= "true", limit = 20, q = what_are_you_looking_for, type = search_type), encode = "json")
+    req_res = httr::GET(glue::glue("https://truthsocial.com/api/v1/{type}"), heads_up)
 
-    res <- content(getted) %>%
+    # ratelimit_check(req_res)
+
+    res <- httr::content(req_res) %>%
+        purrr::map_dfr(parse_output)
+
+    return(res)
+}
+# debugonce(untruth_trends)
+
+
+
+#' @export
+untruth_auth <- function(CLIENT_ID = Sys.getenv("truth_social_client_id"),
+                         CLIENT_SECRET = Sys.getenv("truth_social_client_secret"),
+                         username = Sys.getenv("truth_social_user"),
+                         password = Sys.getenv("truth_social_pw")
+) {
+
+    if(Sys.getenv("truth_social_token")!=""){
+
+        out <- tryCatch(
+            {
+                untruth_trends("truths")
+
+                "no error"
+            },
+            error=function(cond) {
+                # message(paste("URL does not seem to exist:", url))
+                message("You already set a token but it API calls are not working so it might be stale. Here is the error message:")
+                print(as.character(cond))
+
+                # Choose a return value in case of error
+                return("error")
+            }
+        )
+
+        if(out == "error"){
+            resp <- readline("Do you want to refresh your token? [Y/N]")
+        } else {
+            resp <- readline("'truth_social_token' is already set and it still seems to work.\nDo you want to refresh your token anyway? [Y/N]")
+
+        }
+
+        if(resp == "Y"){
+
+            truth_token <- untruth_auth_int(CLIENT_ID, CLIENT_SECRET, username, password)
+
+            return(truth_token)
+
+        } else {
+            message("Your token remains the same!")
+        }
+    } else {
+
+        truth_token <- untruth_auth_int(CLIENT_ID, CLIENT_SECRET, username, password)
+
+        return(truth_token)
+
+    }
+}
+
+
+#' @export
+untruth_search <- function(what_are_you_looking_for, search_type = "statuses", limit = 40, size = 80, verbose = T, retry_on_timeout = T) {
+
+    # what_are_you_looking_for <- "putin"
+
+
+    heads_up <- untruth_headers()
+
+    base_url <- "https://truthsocial.com/api/v2/search"
+
+    if(search_type == "statuses"){
+
+        q <- list(resolve= "true", limit = limit, q = what_are_you_looking_for, type = search_type)
+
+    } else {
+
+        q <- list(limit = limit, q = what_are_you_looking_for, type = search_type)
+
+    }
+
+
+
+
+    req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
+
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = retry_on_timeout)
+
+    res <- httr::content(req_res) %>%
         .[[search_type]] %>%
-        map_dfr(parse_output)
+        purrr::map_dfr(parse_output)
+
+
+    ### paginate
+    res <- paginate(base_url, q, res, size, limit, verbose, search_type)
+
+    if(search_type == "hashtags"){
+        res$id <- res$url
+    }
+
+    res <- dplyr::distinct(res, id, .keep_all = T)
 
     return(res)
 
 }
 
-# debugonce(untruth_search)
+# debugonce(paginate)
 
-# untruth_search("putin")
+# yo2 <- untruth_search("trump", search_type = "hashtags", size = 340)
 
+# yo %>%
+#     mutate(created_at = lubridate::ymd_hms(created_at)) %>%
+#     arrange(created_at) %>%
+#     mutate(created_at = lubridate::floor_date(created_at, "day")) %>%
+#     count(created_at) %>%
+#     ggplot(aes(created_at, n)) +
+#     geom_line()
 
 
 # https://truthsocial.com/api/v1/accounts/107780257626128497/statuses?exclude_replies=true&with_muted=true
 
 
 
-untruth_user_truths <- function(account_id = "107780257626128497") {
 
-    heads_up <- add_headers(`User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0",
-                            Authorization = glue::glue("Bearer {Sys.getenv('truth_social_token')}"),
-                            Accept = 'application/json',
-                            `Accept-Language` = 'en-US,en;q=0.5',
-                            `Accept-Encoding` = "gzip, deflate, br",
-                            `Content-Type` = "application/json",
-                            Connection = "keep-alive"
-    )
 
-    postedy = GET(glue::glue("https://truthsocial.com/api/v1/accounts/{account_id}/statuses"), heads_up, query = list(exclude_replies= "false"), encode = "json")
+# GET("https://truthsocial.com/api/v2/search?q=putin&type=accounts&offset=220", )
 
-    res <- content(postedy) %>%
-        map_dfr(parse_output)
+#' @export
+untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit = 40, size = 120, verbose = T, retry_on_timeout = T) {
+
+    if(is.null(account_id)){
+        rlang::warn("You didn't specify the user ID. It is suggested that you include the user ID if you call this API many times, the function will lookup the user ID for each pagination. You can lookup user IDs with 'untruth_lookup_users'.",   .frequency = "once", .frequency_id = "24")
+
+        account_id  <- untruth_lookup_users(user_handle)$id
+    }
+
+    heads_up <- untruth_headers()
+
+    base_url <- glue::glue("https://truthsocial.com/api/v1/accounts/{account_id}/statuses")
+
+    q <- list(exclude_replies= "false", limit = limit)
+
+    req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
+
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = retry_on_timeout)
+
+    res <- httr::content(req_res) %>%
+        purrr::map_dfr(parse_output)
+
+    ### paginate
+    res <- paginate(base_url, q, res, size, limit, verbose)
+
+
+    res <- dplyr::distinct(res, id, .keep_all = T)
 
     return(res)
 
 }
 
-# debugonce(untruth_user_truths)
-# untruth_user_truths()
+# debugonce(untruth_user_statuses)
+# trumpieboy2 <- untruth_user_statuses("realdonaldtrump")
+
+
+
+#' @export
+untruth_lookup_users <- function(user_handle) {
+
+    heads_up <- untruth_headers()
+
+    req_res = httr::GET(glue::glue("https://truthsocial.com/api/v1/accounts/lookup"), heads_up, query = list(acct = user_handle), encode = "json")
+
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = T)
+
+    res <- httr::content(req_res) %>%
+        purrr::discard(purrr::is_empty) %>%
+        dplyr::bind_rows()
+
+    return(res)
+
+}
+
+# debugonce(untruth_lookup_users)
+# untruth_lookup_users("realdonaldtrump")
+
+
+#' @export
+untruth_suggested_users <- function(maximum = 20) {
+
+    heads_up <- untruth_headers()
+
+    req_res = httr::GET(glue::glue("https://truthsocial.com/api/v2/suggestions?limit={maximum}"), heads_up, encode = "json")
+
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = T)
+
+    res <- httr::content(req_res) %>%
+        purrr::map_dfr(parse_output) %>%
+        tidyr::unnest_wider(account)
+
+    return(res)
+
+}
+
+
+
+
+
