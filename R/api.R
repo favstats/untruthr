@@ -15,26 +15,6 @@
 
 
 
-ratelimit_check <- function(req_res, base_url, heads_up, q = NULL, retry = T) {
-    header_dat <- ratelimit_check_int(req_res)
-
-    if(header_dat$ratelimit_info == "retry" & retry){
-
-        if(is.null(q)){
-
-            req_res = httr::GET(base_url, heads_up, encode = "json")
-        } else {
-
-            req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
-        }
-
-    }
-
-    return(header_dat)
-}
-
-
-
 #' @export
 untruth_trends <- function(type = "hashtags") {
 

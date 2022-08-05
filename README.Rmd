@@ -55,8 +55,7 @@ set_renv(truth_social_pw="YOUR_PW")
 
 ```
 
-You can find your `client_id` and `client_secret` by checking the following file (via inspect) once you have logged into Truth Social in your browser:
-<https://truthsocial.com/packs/js/application-e63292e218e83e726270.js>
+You can find your `client_id` and `client_secret` by checking the following file (via inspect) once you have logged into Truth Social in your browser: <https://truthsocial.com/packs/js/application-e63292e218e83e726270.js>
 
 Once you are done, run `untruth_auth`.
 

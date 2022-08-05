@@ -1,3 +1,91 @@
+
+untruth_headers <- function() {
+    httr::add_headers(`User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0",
+                      Authorization = glue::glue("Bearer {Sys.getenv('truth_social_token')}"),
+                      Accept = 'application/json',
+                      `Content-Type` = "application/json"
+    )
+
+}
+
+ratelimit_check <- function(req_res, base_url, heads_up, q = NULL, retry = T) {
+    header_dat <- ratelimit_check_int(req_res)
+
+    if(header_dat$ratelimit_info == "retry" & retry){
+
+        if(is.null(q)){
+
+            req_res = httr::GET(base_url, heads_up, encode = "json")
+        } else {
+
+            req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
+        }
+
+    }
+
+    return(header_dat)
+}
+
+
+ratelimit_check_int <- function(res) {
+
+    header_dat <- httr::headers(res) %>%
+        dplyr::bind_rows()
+
+    header_dat$ratelimit_info <- "all good"
+
+    ratelimit_max <- as.numeric(header_dat[["x-ratelimit-limit"]])
+    ratelimit_remaining <- as.numeric(header_dat[["x-ratelimit-remaining"]])
+    ratelimit_reset <- header_dat[["x-ratelimit-reset"]] %>% lubridate::ymd_hms()
+
+    perc <- ratelimit_remaining/ratelimit_max*100
+    perc_opp <- 100 - perc
+
+    header_dat$ratelimit_perc <- paste0(round(perc_opp, 2), "%")
+
+    if(null_transform(ratelimit_remaining) <= 50) {
+        sleepy_time <- abs(as.numeric(ratelimit_reset - Sys.time(), units = "secs"))
+
+        message(glue::glue("Rate limit is close: sleeping for {sleepy_time} seconds..."))
+
+        Sys.sleep(sleepy_time)
+
+        header_dat$ratelimit_info <- "retry"
+
+    }
+
+    return(header_dat)
+}
+
+
+untruth_auth_int <- function(CLIENT_ID, CLIENT_SECRET, username, password) {
+    if(any(c(CLIENT_ID, CLIENT_SECRET, username, password) %in% "")){
+        stop("ERROR: Please set your CLIENT_ID, CLIENT_SECRET, username, password as environment variables.")
+    }
+
+    auth_url =  "https://truthsocial.com/oauth/token"
+
+    creds = list(
+        client_id = CLIENT_ID,
+        client_secret = CLIENT_SECRET,
+        grant_type = "password",
+        username = username,
+        password = password
+    )
+
+    res <- httr::POST(auth_url, body = creds, headers = httr::add_headers(`User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0"))
+
+    truth_token <- httr::content(res)$access_token
+
+    set_renv(truth_social_token = truth_token)
+
+    message("Your token has been set! You are ready to use untruthr.")
+
+    return(truth_token)
+
+}
+
+
 parse_output <- function(x) {
     x %>%
         purrr::discard(purrr::is_empty) %>%
@@ -18,14 +106,6 @@ null_transform <- function(x) {
 }
 
 
-untruth_headers <- function() {
-    httr::add_headers(`User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0",
-                      Authorization = glue::glue("Bearer {Sys.getenv('truth_social_token')}"),
-                      Accept = 'application/json',
-                      `Content-Type` = "application/json"
-    )
-
-}
 
 
 paginate <- function(base_url, q, res, size, limit = NULL, verbose, search_type = "") {
@@ -85,55 +165,6 @@ paginate <- function(base_url, q, res, size, limit = NULL, verbose, search_type 
 
 
 
-ratelimit_check_int <- function(res) {
-
-    header_dat <- httr::headers(res) %>%
-        dplyr::bind_rows()
-
-    header_dat$ratelimit_info <- "all good"
-
-    ratelimit_max <- as.numeric(header_dat[["x-ratelimit-limit"]])
-    ratelimit_remaining <- as.numeric(header_dat[["x-ratelimit-remaining"]])
-    ratelimit_reset <- header_dat[["x-ratelimit-reset"]] %>% lubridate::ymd_hms()
-
-    header_dat$ratelimit_perc <- paste0(round(100-(ratelimit_remaining/ratelimit_max*100), 2), "%")
-
-    if(null_transform(ratelimit_remaining) <= 50) {
-        sleepy_time <- abs(as.numeric(ratelimit_reset - Sys.time(), units = "secs"))
-
-        message(glue::glue("Rate limit is close: sleeping for {sleepy_time} seconds..."))
-
-        header_dat$ratelimit_info <- "retry"
-
-    }
-
-    return(header_dat)
-}
 
 
-untruth_auth_int <- function(CLIENT_ID, CLIENT_SECRET, username, password) {
-    if(any(c(CLIENT_ID, CLIENT_SECRET, username, password) %in% "")){
-        stop("ERROR: Please set your CLIENT_ID, CLIENT_SECRET, username, password as environment variables.")
-    }
 
-    auth_url =  "https://truthsocial.com/oauth/token"
-
-    creds = list(
-        client_id = CLIENT_ID,
-        client_secret = CLIENT_SECRET,
-        grant_type = "password",
-        username = username,
-        password = password
-    )
-
-    res <- httr::POST(auth_url, body = creds, headers = httr::add_headers(`User-Agent` = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:93.0) Gecko/20100101 Firefox/93.0"))
-
-    truth_token <- httr::content(res)$access_token
-
-    set_renv(truth_social_token = truth_token)
-
-    message("Your token has been set! You are ready to use untruthr.")
-
-    return(truth_token)
-
-}
