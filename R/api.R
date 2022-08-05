@@ -19,6 +19,8 @@
 untruth_trends <- function(type = "hashtags") {
 
 
+    tsta <- Sys.time()
+
     heads_up <- untruth_headers()
 
     type <- dplyr::case_when(
@@ -31,7 +33,8 @@ untruth_trends <- function(type = "hashtags") {
     # ratelimit_check(req_res)
 
     res <- httr::content(req_res) %>%
-        purrr::map_dfr(parse_output)
+        purrr::map_dfr(parse_output)  %>%
+        dplyr::mutate(tstamp = tsta)
 
     return(res)
 }
@@ -95,6 +98,7 @@ untruth_search <- function(what_are_you_looking_for, search_type = "statuses", l
 
     # what_are_you_looking_for <- "putin"
 
+    tsta <- Sys.time()
 
     heads_up <- untruth_headers()
 
@@ -129,7 +133,8 @@ untruth_search <- function(what_are_you_looking_for, search_type = "statuses", l
         res$id <- res$url
     }
 
-    res <- dplyr::distinct(res, id, .keep_all = T)
+    res <- dplyr::distinct(res, id, .keep_all = T) %>%
+        dplyr::mutate(tstamp = tsta)
 
     return(res)
 
@@ -159,6 +164,8 @@ untruth_search <- function(what_are_you_looking_for, search_type = "statuses", l
 #' @export
 untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit = 40, size = 120, verbose = T, retry_on_timeout = T) {
 
+    tsta <- Sys.time()
+
     if(is.null(account_id)){
         rlang::warn("You didn't specify the user ID. It is suggested that you include the user ID if you call this API many times, the function will lookup the user ID for each pagination. You can lookup user IDs with 'untruth_lookup_users'.",   .frequency = "once", .frequency_id = "24")
 
@@ -182,7 +189,8 @@ untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit =
     res <- paginate(base_url, q, res, size, limit, verbose)
 
 
-    res <- dplyr::distinct(res, id, .keep_all = T)
+    res <- dplyr::distinct(res, id, .keep_all = T) %>%
+        dplyr::mutate(tstamp = tsta)
 
     return(res)
 
@@ -196,6 +204,8 @@ untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit =
 #' @export
 untruth_lookup_users <- function(user_handle) {
 
+    tsta <- Sys.time()
+
     heads_up <- untruth_headers()
 
     req_res = httr::GET(glue::glue("https://truthsocial.com/api/v1/accounts/lookup"), heads_up, query = list(acct = user_handle), encode = "json")
@@ -204,7 +214,8 @@ untruth_lookup_users <- function(user_handle) {
 
     res <- httr::content(req_res) %>%
         purrr::discard(purrr::is_empty) %>%
-        dplyr::bind_rows()
+        dplyr::bind_rows() %>%
+        dplyr::mutate(tstamp = tsta)
 
     return(res)
 
@@ -217,6 +228,8 @@ untruth_lookup_users <- function(user_handle) {
 #' @export
 untruth_suggested_users <- function(maximum = 20) {
 
+    tsta <- Sys.time()
+
     heads_up <- untruth_headers()
 
     req_res = httr::GET(glue::glue("https://truthsocial.com/api/v2/suggestions?limit={maximum}"), heads_up, encode = "json")
@@ -225,7 +238,8 @@ untruth_suggested_users <- function(maximum = 20) {
 
     res <- httr::content(req_res) %>%
         purrr::map_dfr(parse_output) %>%
-        tidyr::unnest_wider(account)
+        tidyr::unnest_wider(account) %>%
+        dplyr::mutate(tstamp = tsta)
 
     return(res)
 
