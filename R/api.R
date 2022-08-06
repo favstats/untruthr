@@ -127,14 +127,17 @@ untruth_search <- function(what_are_you_looking_for, search_type = "statuses", l
 
 
     ### paginate
-    res <- paginate(base_url, q, res, size, limit, verbose, search_type)
+    if(nrow(res)!=0){
+        res <- paginate(base_url, q, res, size, limit, verbose, search_type)
 
-    if(search_type == "hashtags"){
-        res$id <- res$url
+        if(search_type == "hashtags"){
+            res$id <- res$url
+        }
+
+        res <- dplyr::distinct(res, id, .keep_all = T) %>%
+            dplyr::mutate(tstamp = tsta)
     }
 
-    res <- dplyr::distinct(res, id, .keep_all = T) %>%
-        dplyr::mutate(tstamp = tsta)
 
     return(res)
 
@@ -186,11 +189,14 @@ untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit =
         purrr::map_dfr(parse_output)
 
     ### paginate
-    res <- paginate(base_url, q, res, size, limit, verbose)
+    if(nrow(res)!=0){
+        res <- paginate(base_url, q, res, size, limit, verbose)
 
 
-    res <- dplyr::distinct(res, id, .keep_all = T) %>%
-        dplyr::mutate(tstamp = tsta)
+        res <- dplyr::distinct(res, id, .keep_all = T) %>%
+            dplyr::mutate(tstamp = tsta)
+    }
+
 
     return(res)
 
