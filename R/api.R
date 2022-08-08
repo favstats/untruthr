@@ -14,7 +14,6 @@
 
 
 
-
 #' @export
 untruth_trends <- function(type = "hashtags") {
 
@@ -214,7 +213,9 @@ untruth_lookup_users <- function(user_handle) {
 
     heads_up <- untruth_headers()
 
-    req_res = httr::GET(glue::glue("https://truthsocial.com/api/v1/accounts/lookup"), heads_up, query = list(acct = user_handle), encode = "json")
+    base_url <- "https://truthsocial.com/api/v1/accounts/lookup"
+
+    req_res = httr::GET(base_url, heads_up, query = list(acct = user_handle), encode = "json")
 
     header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = T)
 

@@ -21,7 +21,7 @@ knitr::opts_chunk$set(
 
 <!-- badges: end -->
 
-The goal of `untruthr` is to provide a scraper for the social networking website [Truth Social](https://truthsocial.com/)
+The goal of `untruthr` is to provide access to the social networking website [Truth Social](https://truthsocial.com/)
 
 ## Installation
 
@@ -47,15 +47,16 @@ Authenticate yourself with `untruth_auth`. Note: you require a Truth Social acco
 Set the following environment variables (note it's best to type this into your console so you don't create a script with your valuable login details):
 
 ```{r, eval = F}
-set_renv(truth_social_client_id="YOUR_CLIENT_ID")
-set_renv(truth_social_client_secret="YOUR_CLIENT_SECRET")
+## NOTE: Client ID and Client Secret seem to be the same for every single user
+set_renv(truth_social_client_id="9X1Fdd-pxNsAgEDNi_SfhJWi8T-vLuV2WVzKIbkTCw4")
+set_renv(truth_social_client_secret="ozF8jzI4968oTKFkEnsBC-UbLPCdrSv0MkXGQu2o_-M")
+## is that safe? I don't know but I also don't have a social media platform sooo..
+
+## set your user handle and pw here:
 set_renv(truth_social_user="YOUR_USER_HANDLE")
 set_renv(truth_social_pw="YOUR_PW")
 
-
 ```
-
-You can find your `client_id` and `client_secret` by checking the following file (via inspect) once you have logged into Truth Social in your browser: <https://truthsocial.com/packs/js/application-e63292e218e83e726270.js>
 
 Once you are done, run `untruth_auth`.
 
@@ -63,7 +64,7 @@ Once you are done, run `untruth_auth`.
 untruth_auth()
 ```
 
-Now you can use `untruthr`. Note: you only need to authenticate once. You only have to redo this once your token becomes stale.
+Now you can use `untruthr`. Note: you only need to authenticate once. You only have to redo this once your token becomes stale, which does not seem to happen very often. It seems like the token is active for a few days at least. Will update once I know more.
 
 ## Get trending hashtags
 
