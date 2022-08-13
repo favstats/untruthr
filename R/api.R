@@ -93,7 +93,7 @@ untruth_auth <- function(CLIENT_ID = Sys.getenv("truth_social_client_id"),
 
 
 #' @export
-untruth_search <- function(what_are_you_looking_for, search_type = "statuses", limit = 40, size = 80, verbose = T, retry_on_timeout = T) {
+untruth_search <- function(what_are_you_looking_for, search_type = "statuses", limit = 40, size = 80, verbose = T, retry_on_timeout = T, ...) {
 
     # what_are_you_looking_for <- "putin"
 
@@ -118,7 +118,7 @@ untruth_search <- function(what_are_you_looking_for, search_type = "statuses", l
 
     req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
 
-    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = retry_on_timeout)
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = retry_on_timeout, ...)
 
     res <- httr::content(req_res) %>%
         .[[search_type]] %>%
@@ -127,7 +127,7 @@ untruth_search <- function(what_are_you_looking_for, search_type = "statuses", l
 
     ### paginate
     if(nrow(res)!=0){
-        res <- paginate(base_url, q, res, size, limit, verbose, search_type)
+        res <- paginate(base_url, q, res, size, limit, verbose, search_type, ...)
 
         if(search_type == "hashtags"){
             res$id <- res$url
@@ -164,7 +164,7 @@ untruth_search <- function(what_are_you_looking_for, search_type = "statuses", l
 # GET("https://truthsocial.com/api/v2/search?q=putin&type=accounts&offset=220", )
 
 #' @export
-untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit = 40, size = 120, verbose = T, retry_on_timeout = T) {
+untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit = 40, size = 120, verbose = T, retry_on_timeout = T, ...) {
 
     tsta <- Sys.time()
 
@@ -182,14 +182,14 @@ untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit =
 
     req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
 
-    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = retry_on_timeout)
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = retry_on_timeout, ...)
 
     res <- httr::content(req_res) %>%
         purrr::map_dfr(parse_output)
 
     ### paginate
     if(nrow(res)!=0){
-        res <- paginate(base_url, q, res, size, limit, verbose)
+        res <- paginate(base_url, q, res, size, limit, verbose, ...)
 
 
         res <- dplyr::distinct(res, id, .keep_all = T) %>%
@@ -207,7 +207,7 @@ untruth_user_statuses <- function(user_handle = NULL, account_id = NULL, limit =
 
 
 #' @export
-untruth_lookup_users <- function(user_handle) {
+untruth_lookup_users <- function(user_handle, ...) {
 
     tsta <- Sys.time()
 
@@ -217,7 +217,7 @@ untruth_lookup_users <- function(user_handle) {
 
     req_res = httr::GET(base_url, heads_up, query = list(acct = user_handle), encode = "json")
 
-    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = T)
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = T, ...)
 
     res <- httr::content(req_res) %>%
         purrr::discard(purrr::is_empty) %>%
@@ -233,7 +233,7 @@ untruth_lookup_users <- function(user_handle) {
 
 
 #' @export
-untruth_suggested_users <- function(maximum = 20) {
+untruth_suggested_users <- function(maximum = 20, ...) {
 
     tsta <- Sys.time()
 
@@ -241,7 +241,7 @@ untruth_suggested_users <- function(maximum = 20) {
 
     req_res = httr::GET(glue::glue("https://truthsocial.com/api/v2/suggestions?limit={maximum}"), heads_up, encode = "json")
 
-    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = T)
+    header_dat <- ratelimit_check(req_res, base_url, heads_up, q, retry = T, ...)
 
     res <- httr::content(req_res) %>%
         purrr::map_dfr(parse_output) %>%

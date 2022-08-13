@@ -9,22 +9,28 @@ untruth_headers <- function() {
 
 }
 
-ratelimit_check <- function(req_res, base_url, heads_up, q = NULL, retry = T) {
-    header_dat <- ratelimit_check_int(req_res)
+ratelimit_check <- function(req_res, base_url, heads_up, q = NULL, retry = T, debug = F) {
 
-    if(header_dat$ratelimit_info == "retry" & retry){
+    if(!debug){
+        header_dat <- ratelimit_check_int(req_res)
 
-        if(is.null(q)){
+        if(header_dat$ratelimit_info == "retry" & retry){
 
-            req_res = httr::GET(base_url, heads_up, encode = "json")
-        } else {
+            if(is.null(q)){
 
-            req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
+                req_res = httr::GET(base_url, heads_up, encode = "json")
+            } else {
+
+                req_res = httr::GET(base_url, heads_up, query = q, encode = "json")
+            }
+
         }
 
+        return(header_dat)
+    } else {
+        rlang::inform("Debug mode is on.",   .frequency = "regularly", .frequency_id = "2")
     }
 
-    return(header_dat)
 }
 
 
@@ -109,7 +115,7 @@ null_transform <- function(x) {
 
 
 
-paginate <- function(base_url, q, res, size, limit = NULL, verbose, search_type = "") {
+paginate <- function(base_url, q, res, size, limit = NULL, verbose, search_type = "", ...) {
 
     heads_up <- untruth_headers()
 
@@ -138,7 +144,7 @@ paginate <- function(base_url, q, res, size, limit = NULL, verbose, search_type 
 
         next_page <- httr::GET(glue::glue("{base_url}"), heads_up, query = q, encode = "json")
 
-        header_dat <- ratelimit_check(next_page, glue::glue("{base_url}"), heads_up, q, retry = T)
+        header_dat <- ratelimit_check(next_page, glue::glue("{base_url}"), heads_up, q, retry = T, ...)
 
 
         res_next <- httr::content(next_page) %>%
