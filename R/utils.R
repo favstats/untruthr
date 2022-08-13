@@ -48,7 +48,7 @@ ratelimit_check_int <- function(res) {
     perc <- ratelimit_remaining/ratelimit_max*100
     perc_opp <- 100 - perc
 
-    header_dat$ratelimit_perc <- paste0(round(perc_opp, 2), "%")
+    header_dat$ratelimit_perc <- paste0(format(round(perc_opp, 2)), "%")
 
     if(null_transform(ratelimit_remaining) <= 50) {
         sleepy_time <- abs(as.numeric(ratelimit_reset - Sys.time(), units = "secs"))
