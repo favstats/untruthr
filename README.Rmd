@@ -33,7 +33,7 @@ remotes::install_github("favstats/untruthr")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem:
+First load in R package
 
 ```{r example}
 library(untruthr)
@@ -51,7 +51,10 @@ Set the following environment variables (note it's best to type this into your c
 set_renv(truth_social_client_id="9X1Fdd-pxNsAgEDNi_SfhJWi8T-vLuV2WVzKIbkTCw4")
 set_renv(truth_social_client_secret="ozF8jzI4968oTKFkEnsBC-UbLPCdrSv0MkXGQu2o_-M")
 ## is that safe? I don't know but I also don't have a social media platform sooo..
+```
 
+
+```{r, eval = F}
 ## set your user handle and pw here:
 set_renv(truth_social_user="YOUR_USER_HANDLE")
 set_renv(truth_social_pw="YOUR_PW")
@@ -83,7 +86,10 @@ untruth_trends(type = "truths")
 In this case we are getting the 40 last "truths" from Donald Trump
 
 ```{r}
+# debugonce(untruth_user_statuses)
 untruth_user_statuses("realdonaldtrump", size = 40)
+
+
 ```
 
 ## Search for statuses containing keywords
@@ -95,6 +101,7 @@ untruth_search("qanon", search_type = "statuses", size = 40)
 ## Search for accounts containing keywords
 
 ```{r}
+# debugonce(untruth_search)
 untruth_search("qanon", search_type = "accounts", size = 40)
 ```
 
